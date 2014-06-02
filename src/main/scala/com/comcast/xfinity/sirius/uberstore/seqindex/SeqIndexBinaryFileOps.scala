@@ -1,5 +1,5 @@
 /*
- *  Copyright 2012-2013 Comcast Cable Communications Management, LLC
+ *  Copyright 2012-2014 Comcast Cable Communications Management, LLC
  *
  *  Licensed under the Apache License, Version 2.0 (the "License");
  *  you may not use this file except in compliance with the License.
@@ -101,7 +101,7 @@ class SeqIndexBinaryFileOps private[seqindex](checksummer: Checksummer,
    *
    * Not thread safe with respect to indexFileHandle
    *
-   * @indexFileHandle RandomAccessFile for the index file, it's offset
+   * @param indexFileHandle RandomAccessFile for the index file, it's offset
    *                    will be advanced 24 bytes (entry length)
    */
   def readEntry(indexFileHandle: RandomAccessFile): (Long, Long) = {

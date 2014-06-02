@@ -1,5 +1,5 @@
 /*
- *  Copyright 2012-2013 Comcast Cable Communications Management, LLC
+ *  Copyright 2012-2014 Comcast Cable Communications Management, LLC
  *
  *  Licensed under the Apache License, Version 2.0 (the "License");
  *  you may not use this file except in compliance with the License.
@@ -162,6 +162,14 @@ class ReplicaTest extends NiceTest with BeforeAndAfterAll {
     }
 
     describe ("in response to a DecisionHint") {
+      it("ignores the DH if it's out of date") {
+        val localLeader = TestProbe()
+        val replica = makeReplica(localLeader.ref, 5)
+        replica ! DecisionHint(2)
+
+        assert(5 === replica.underlyingActor.slotNum)
+        localLeader.expectNoMsg()
+      }
       it("updates the slotNum") {
         val localLeader = TestProbe()
         val replica = makeReplica(localLeader.ref, 2)

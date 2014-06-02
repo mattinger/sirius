@@ -1,5 +1,5 @@
 /*
- *  Copyright 2012-2013 Comcast Cable Communications Management, LLC
+ *  Copyright 2012-2014 Comcast Cable Communications Management, LLC
  *
  *  Licensed under the Apache License, Version 2.0 (the "License");
  *  you may not use this file except in compliance with the License.
@@ -30,6 +30,58 @@ object SiriusConfiguration {
    * Takes precedence over all other akka configuration for port
    */
   final val PORT = "sirius.akka.port"
+
+  /**
+   * Flag (boolean) to enable or disable SSL encryption support for akka
+   * If enabled all akka communications will be done over SSL providing
+   * the key store and trust store are configured correctly
+   */
+  final val ENABLE_SSL = "sirius.akka.ssl"
+
+  /**
+   * Implementation of random number generator to use with SSL security. Defaults to
+   * the no-arg constructor of [[java.security.SecureRandom]].
+   *
+   * Possible values include AES128CounterSecureRNG, AES256CounterSecureRNG, AES128CounterInetRNG,
+   * AES256CounterInetRNG, SHA1PRNG, NativePRNG. See [[akka.remote.transport.netty.NettySSLSupport]] for
+   * more details.
+   */
+  final val SSL_RANDOM_NUMBER_GENERATOR = "sirius.akka.ssl.rng"
+
+  /**
+   * Support for akka over SSL
+   * This is the configurable Java key store location and is used by the server connection
+   */
+  final val KEY_STORE_LOCATION = "sirius.akka.ssl.key-store.location"
+
+  /**
+   * Support for akka over SSL
+   * This is the configurable Java key store password used for decrypting the key store
+   */
+  final val KEY_STORE_PASSWORD = "sirius.akka.ssl.key-store.password"
+
+  /**
+   * Support for akka over SSL
+   * This is configurable Java key password used for decrypting the key
+   */
+  final val KEY_PASSWORD = "sirius.akka.ssl.key.password"
+
+  /**
+    * Support for akka over SSL
+    * This is the configurable Java trust store location and is used by the client connection
+    */
+   final val TRUST_STORE_LOCATION = "sirius.akka.ssl.trust-store.location"
+
+  /**
+   * Support for akka over SSL
+   * Configurable Java trust store password used to decrypt the trust store
+   */
+  final val TRUST_STORE_PASSWORD = "sirius.akka.ssl.trust-store.password"
+
+  /**
+   *  AkkaExternalAddressResolver
+   */
+  final val AKKA_EXTERNAL_ADDRESS_RESOLVER = "sirius.akka.external-address-resolver"
 
   /**
    * External akka ActorSystem configuration. It this location exists
@@ -194,6 +246,35 @@ object SiriusConfiguration {
    */
   final val CLIENT_TIMEOUT_MS = "sirius.client.ask-timeout-ms"
 
+  /**
+   * Amount to increase catchup request timeout per event in window size. Default 0.01s
+   *
+   * timeout = timeout_base + ( w * timeout_per_event )
+   */
+  final val CATCHUP_TIMEOUT_INCREASE_PER_EVENT = "sirius.catchup.timeout-coefficient"
+
+  /**
+   * Base value of catchup request timeout. Default is 1s
+   *
+   * timeout = timeout_base + ( w * timeout_per_event )
+   */
+  final val CATCHUP_TIMEOUT_BASE = "sirius.catchup.timeout-constant"
+
+  /**
+   * Maximum catchup window size, in number of events. Default is 1000.
+   */
+  final val CATCHUP_MAX_WINDOW_SIZE = "sirius.catchup.max-window-size"
+
+  /**
+   * Starting ssthresh, which is the point where catchup transitions from Slow Start to
+   * Congestion Avoidance. Default is 500.
+   */
+  final val CATCHUP_DEFAULT_SSTHRESH = "sirius.catchup.default-ssthresh"
+
+  /*
+   * Maximum akka message size in KB. Default is 1024.
+   */
+  final val MAX_AKKA_MESSAGE_SIZE_KB = "sirius.akka.maximum-frame-size-kb"
 }
 
 /**
@@ -241,7 +322,7 @@ class SiriusConfiguration {
    *
    * @return the value stored under name, or the default if it's not found
    */
-  def getProp[T](name: String, default: T): T = conf.get(name) match {
+  def getProp[T](name: String, default: => T): T = conf.get(name) match {
     case Some(value) => value.asInstanceOf[T]
     case None => default
   }

@@ -1,5 +1,5 @@
 /*
- *  Copyright 2012-2013 Comcast Cable Communications Management, LLC
+ *  Copyright 2012-2014 Comcast Cable Communications Management, LLC
  *
  *  Licensed under the Apache License, Version 2.0 (the "License");
  *  you may not use this file except in compliance with the License.
@@ -125,7 +125,7 @@ class Replica(localLeader: ActorRef,
           logger.warning("Received exception applying decision {}: {}", decision, t)
       }
 
-    case decisionHint @ DecisionHint(decisionHintSlotNum) =>
+    case decisionHint @ DecisionHint(decisionHintSlotNum) if decisionHintSlotNum >= slotNum =>
       slotNum = decisionHintSlotNum + 1
 
       outstandingProposals.filter((k, _) => k > decisionHintSlotNum)

@@ -1,5 +1,5 @@
 /*
- *  Copyright 2012-2013 Comcast Cable Communications Management, LLC
+ *  Copyright 2012-2014 Comcast Cable Communications Management, LLC
  *
  *  Licensed under the Apache License, Version 2.0 (the "License");
  *  you may not use this file except in compliance with the License.
@@ -66,7 +66,7 @@ class SiriusImplTest extends NiceTest with TimedTest {
 
   before {
     actorSystem = ActorSystem("testsystem", ConfigFactory.parseString("""
-            akka.event-handlers = ["akka.testkit.TestEventListener"]
+            akka.loggers = ["akka.testkit.TestEventListener"]
     """))
 
     membership = mock[Map[String, Option[ActorRef]]]

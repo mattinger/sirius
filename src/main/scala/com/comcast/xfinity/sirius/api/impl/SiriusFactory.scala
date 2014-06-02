@@ -1,5 +1,5 @@
 /*
- *  Copyright 2012-2013 Comcast Cable Communications Management, LLC
+ *  Copyright 2012-2014 Comcast Cable Communications Management, LLC
  *
  *  Licensed under the Apache License, Version 2.0 (the "License");
  *  you may not use this file except in compliance with the License.
@@ -26,19 +26,23 @@ import com.comcast.xfinity.sirius.api.SiriusConfiguration
 import com.comcast.xfinity.sirius.info.SiriusInfo
 import com.comcast.xfinity.sirius.writeaheadlog.CachedSiriusLog
 import com.comcast.xfinity.sirius.writeaheadlog.SiriusLog
-import com.typesafe.config.Config
-import com.typesafe.config.ConfigFactory
+import com.typesafe.config.{Config, ConfigFactory}
 
 import akka.actor.ActorRef
 import akka.actor.ActorSystem
 import javax.management.ObjectName
 import com.comcast.xfinity.sirius.uberstore.segmented.SegmentedUberStore
 import com.comcast.xfinity.sirius.uberstore.UberStore
+import com.comcast.xfinity.sirius.util.AkkaExternalAddressResolver
+
+import scala.collection.JavaConverters._
+import org.slf4j.LoggerFactory
 
 /**
  * Provides the factory for [[com.comcast.xfinity.sirius.api.impl.SiriusImpl]] instances
  */
 object SiriusFactory {
+  val traceLog = LoggerFactory.getLogger("SiriusFactory")
 
   /**
    * SiriusImpl factory method, takes parameters to construct a SiriusImplementation and the dependent
@@ -99,11 +103,14 @@ object SiriusFactory {
     val mbeanServer = ManagementFactory.getPlatformMBeanServer
     siriusConfig.setProp(SiriusConfiguration.MBEAN_SERVER, mbeanServer)
 
+    // inject AkkaExternalAddressResolver
+    siriusConfig.setProp(SiriusConfiguration.AKKA_EXTERNAL_ADDRESS_RESOLVER, AkkaExternalAddressResolver(actorSystem) (siriusConfig))
+
     // here it is! the real deal creation
     val impl = SiriusImpl(requestHandler, siriusLog, siriusConfig)
 
-    // create a SiriusInfo MBean which will remain registered until we explicity shutdown sirius
-    val (siriusInfoObjectName, siriusInfo) = createSiriusInfoMBean(actorSystem, impl.supervisor)
+    // create a SiriusInfo MBean which will remain registered until we explicitly shutdown sirius
+    val (siriusInfoObjectName, siriusInfo) = createSiriusInfoMBean(actorSystem, impl.supervisor)(siriusConfig)
     mbeanServer.registerMBean(siriusInfo, siriusInfoObjectName)
 
     // need to shut down the actor system and unregister the mbeans when sirius is done
@@ -116,10 +123,13 @@ object SiriusFactory {
     impl
   }
 
-  private def createSiriusInfoMBean(actorSystem: ActorSystem, siriusSup: ActorRef): (ObjectName, SiriusInfo) = {
-    val siriusInfo = new SiriusInfo(actorSystem, siriusSup)
+  private def createSiriusInfoMBean(actorSystem: ActorSystem, siriusSup: ActorRef)
+                                   (siriusConfig: SiriusConfiguration): (ObjectName, SiriusInfo) = {
+    val resolver = siriusConfig.getProp[AkkaExternalAddressResolver](SiriusConfiguration.AKKA_EXTERNAL_ADDRESS_RESOLVER).
+      getOrElse(throw new IllegalStateException("SiriusConfiguration.AKKA_EXTERNAL_ADDRESS_RESOLVER returned nothing"))
+    val siriusInfo = new SiriusInfo(actorSystem, siriusSup, resolver)
     val objectNameHelper = new ObjectNameHelper
-    val siriusInfoObjectName = objectNameHelper.getObjectName(siriusInfo, siriusSup, actorSystem)
+    val siriusInfoObjectName = objectNameHelper.getObjectName(siriusInfo, siriusSup, actorSystem)(siriusConfig)
     (siriusInfoObjectName, siriusInfo)
   }
 
@@ -132,7 +142,6 @@ object SiriusFactory {
   private def createActorSystemConfig(siriusConfig: SiriusConfiguration): Config = {
     val hostPortConfig = createHostPortConfig(siriusConfig)
     val externalConfig = createExternalConfig(siriusConfig)
-
     val baseAkkaConfig = ConfigFactory.load("sirius-akka-base.conf")
 
     hostPortConfig.withFallback(externalConfig).withFallback(baseAkkaConfig)
@@ -140,11 +149,45 @@ object SiriusFactory {
 
   private def createHostPortConfig(siriusConfig: SiriusConfiguration): Config = {
     val configMap = new JHashMap[String, Any]()
+    val sslEnabled = siriusConfig.getProp(SiriusConfiguration.ENABLE_SSL, false)
+    val transportPrefix = if (sslEnabled) "akka.remote.netty.ssl" else "akka.remote.netty.tcp"
+    traceLog.info(s"AKKA using transport: $transportPrefix")
 
-    configMap.put("akka.remote.netty.tcp.hostname",
+    configMap.put("akka.remote.enabled-transports", List(transportPrefix).asJava)
+    configMap.put(s"$transportPrefix.hostname",
       siriusConfig.getProp(SiriusConfiguration.HOST, InetAddress.getLocalHost.getHostName))
-    configMap.put("akka.remote.netty.tcp.port",
-      siriusConfig.getProp(SiriusConfiguration.PORT, 2552))
+    configMap.put(s"$transportPrefix.port", siriusConfig.getProp(SiriusConfiguration.PORT, 2552))
+
+    val maxMessageSize = siriusConfig.getProp(SiriusConfiguration.MAX_AKKA_MESSAGE_SIZE_KB, "1024")
+    val bufferSize = maxMessageSize * 2
+    configMap.put(s"$transportPrefix.maximum-frame-size", s"${maxMessageSize}k")
+    configMap.put(s"$transportPrefix.send-buffer-size", s"${bufferSize}k")
+    configMap.put(s"$transportPrefix.receive-buffer-size", s"${bufferSize}k")
+
+    if (sslEnabled) {
+      configMap.put(s"$transportPrefix.random-number-generator",
+        siriusConfig.getProp(SiriusConfiguration.SSL_RANDOM_NUMBER_GENERATOR, ""))
+
+      configMap.put(s"$transportPrefix.security.key-store",
+        siriusConfig.getProp(SiriusConfiguration.KEY_STORE_LOCATION,
+                             throw new IllegalArgumentException("No key-store provided")))
+
+      configMap.put(s"$transportPrefix.security.trust-store",
+        siriusConfig.getProp(SiriusConfiguration.TRUST_STORE_LOCATION,
+                             throw new IllegalArgumentException("No trust-store provided")))
+
+      configMap.put(s"$transportPrefix.security.key-store-password",
+        siriusConfig.getProp(SiriusConfiguration.KEY_STORE_PASSWORD,
+                             throw new IllegalArgumentException("No key-store-password value provided")))
+
+      configMap.put(s"$transportPrefix.security.key-password",
+        siriusConfig.getProp(SiriusConfiguration.KEY_PASSWORD,
+                             throw new IllegalArgumentException("No key-password value provided")))
+
+      configMap.put(s"$transportPrefix.security.trust-store-password",
+        siriusConfig.getProp(SiriusConfiguration.TRUST_STORE_PASSWORD,
+                             throw new IllegalArgumentException("No trust-store-password value provided")))
+    }
 
     // this is just so that the intellij shuts up
     ConfigFactory.parseMap(configMap.asInstanceOf[JHashMap[String, _ <: AnyRef]])
@@ -162,9 +205,9 @@ object SiriusFactory {
       case Some(externConfig) =>
         val externConfigFile = new File(externConfig)
         if (externConfigFile.exists()) {
-          ConfigFactory.parseFile(externConfigFile)
+          ConfigFactory.parseFile(externConfigFile).resolve()
         } else {
-          ConfigFactory.parseResources(externConfig)
+          ConfigFactory.parseResources(externConfig).resolve()
         }
     }
 }

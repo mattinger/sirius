@@ -1,6 +1,6 @@
 #!/bin/bash
 #
-# Copyright 2012-2013 Comcast Cable Communications Management, LLC
+# Copyright 2012-2014 Comcast Cable Communications Management, LLC
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -18,15 +18,15 @@ sirius_base=`dirname $0`
 sirius_base=`cd $sirius_base/..; pwd`
 
 # Got this from the scala launcher, we somehow hose
-# the tty, so we do this to restor it when we're done
+# the tty, so we do this to restore it when we're done
 exit_code=1
 saved_stty=""
 
 function onExit {
-    if [ "$saved_tty" == "" ]; then
+    if [ ! -z "$saved_stty" ]; then
         stty $saved_stty
-        exit $exit_code
     fi
+    exit $exit_code
 }
 
 trap onExit EXIT

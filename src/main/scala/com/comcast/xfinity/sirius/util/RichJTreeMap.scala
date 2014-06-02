@@ -1,5 +1,5 @@
 /*
- *  Copyright 2012-2013 Comcast Cable Communications Management, LLC
+ *  Copyright 2012-2014 Comcast Cable Communications Management, LLC
  *
  *  Licensed under the Apache License, Version 2.0 (the "License");
  *  you may not use this file except in compliance with the License.
@@ -25,7 +25,7 @@ object RichJTreeMap {
    * Create a RichJTreeMap and populate with provided
    * elements
    *
-   * @kvs varargs of key/value pairs, same as you would
+   * @param kvs varargs of key/value pairs, same as you would
    *        construct standard Scala Maps
    */
   def apply[K, V](kvs: (K, V)*): RichJTreeMap[K, V] = {
@@ -88,7 +88,7 @@ class RichJTreeMap[K, V] private extends JTreeMap[K, V] {
    *
    * @param predicate a function to be applied to each
    *        key value pair in the map. All elements for
-   *        which this function evaulates true up to
+   *        which this function evaluates true up to
    *        the first element (not inclusive) for which
    *        it returns false are removed.
    */

@@ -1,5 +1,5 @@
 /*
- *  Copyright 2012-2013 Comcast Cable Communications Management, LLC
+ *  Copyright 2012-2014 Comcast Cable Communications Management, LLC
  *
  *  Licensed under the Apache License, Version 2.0 (the "License");
  *  you may not use this file except in compliance with the License.
@@ -16,7 +16,6 @@
 package com.comcast.xfinity.sirius.api.impl.membership
 
 import com.comcast.xfinity.sirius.NiceTest
-import collection.immutable
 import akka.actor.{ActorSystem, ActorRef}
 import org.scalatest.BeforeAndAfterAll
 import akka.testkit.TestProbe
@@ -51,29 +50,29 @@ class MembershipHelperTest extends NiceTest with BeforeAndAfterAll {
         assert(data3.get === remoteActorRef)
       }
 
-      it("should send back a None if the only ActorRef in the MembershipMap is equal to the caller") {
+      it("should send back a Failure if the only ActorRef in the MembershipMap is equal to the caller") {
         val membership: Agent[Map[String, Option[ActorRef]]] =
           Agent(Map("local" -> Some(localActorRef)))
         val membershipHelper: MembershipHelper = MembershipHelper(membership, localActorRef)
 
         val data = membershipHelper.getRandomMember
-        assert(data === None)
+        assert(data.isFailure)
       }
 
-      it("should send back a None if the membershipMap is empty") {
+      it("should send back a Failure if the membershipMap is empty") {
         val membership = Agent(Map[String, Option[ActorRef]]())
         val membershipHelper: MembershipHelper = MembershipHelper(membership, localActorRef)
 
         val data = membershipHelper.getRandomMember
-        assert(data === None)
+        assert(data.isFailure)
       }
 
-      it("should send back a None if all values are currently None or local") {
+      it("should send back a Failure if all values are currently None or local") {
         val membership = Agent(Map[String, Option[ActorRef]]("badactor" -> None, "similarlybad" -> None, "local" -> Some(localActorRef)))
         val membershipHelper: MembershipHelper = MembershipHelper(membership, localActorRef)
 
         val data = membershipHelper.getRandomMember
-        assert(data === None)
+        assert(data.isFailure)
       }
     }
 

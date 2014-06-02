@@ -1,5 +1,5 @@
 /*
- *  Copyright 2012-2013 Comcast Cable Communications Management, LLC
+ *  Copyright 2012-2014 Comcast Cable Communications Management, LLC
  *
  *  Licensed under the Apache License, Version 2.0 (the "License");
  *  you may not use this file except in compliance with the License.
@@ -18,6 +18,7 @@ package com.comcast.xfinity.sirius.admin
 import com.comcast.xfinity.sirius.api.SiriusConfiguration
 import javax.management.{ObjectName, MBeanServer}
 import akka.actor.ActorContext
+import com.comcast.xfinity.sirius.util.AkkaExternalAddressResolver
 
 /**
  * Trait for easily registering MBeans from an Actor
@@ -48,7 +49,7 @@ trait MonitoringHooks {
   def registerMonitor(mbean: => Any, siriusConfig: SiriusConfiguration)(implicit context: ActorContext) {
     siriusConfig.getProp[MBeanServer](SiriusConfiguration.MBEAN_SERVER) match {
       case Some(mbeanServer) =>
-        val objectName = objectNameHelper.getObjectName(mbean, context.self, context.system)
+        val objectName = objectNameHelper.getObjectName(mbean, context.self, context.system)(siriusConfig)
         mbeanServer.registerMBean(mbean, objectName)
         objectNames += objectName
       case None => // no-op

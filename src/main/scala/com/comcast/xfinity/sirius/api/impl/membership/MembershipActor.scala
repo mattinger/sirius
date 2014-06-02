@@ -1,5 +1,5 @@
 /*
- *  Copyright 2012-2013 Comcast Cable Communications Management, LLC
+ *  Copyright 2012-2014 Comcast Cable Communications Management, LLC
  *
  *  Licensed under the Apache License, Version 2.0 (the "License");
  *  you may not use this file except in compliance with the License.
@@ -54,7 +54,7 @@ object MembershipActor {
     val clusterConfigLocation = config.getProp[String](SiriusConfiguration.CLUSTER_CONFIG).getOrElse(
       throw new IllegalArgumentException(SiriusConfiguration.CLUSTER_CONFIG + " is not configured")
     )
-    val clusterConfig = BackwardsCompatibleClusterConfig(FileBasedClusterConfig(clusterConfigLocation))
+    val clusterConfig = BackwardsCompatibleClusterConfig(FileBasedClusterConfig(clusterConfigLocation))(config)
     val checkIntervalSecs = config.getProp(SiriusConfiguration.MEMBERSHIP_CHECK_INTERVAL, 30)
     val pingIntervalSecs = config.getProp(SiriusConfiguration.MEMBERSHIP_PING_INTERVAL, 30)
 

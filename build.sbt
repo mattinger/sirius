@@ -1,5 +1,5 @@
 //
-// Copyright 2012-2013 Comcast Cable Communications Management, LLC
+// Copyright 2012-2014 Comcast Cable Communications Management, LLC
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -15,12 +15,12 @@
 
 name := "sirius"
 
-version := "1.1.4"
+version := "1.2.1"
 
 scalaVersion := "2.10.2"
 
 // Set the artifact names.
-artifactName := { (scalaVersion: String, module: ModuleID, artifact: Artifact) =>
+artifactName := { (scalaVersion: ScalaVersion, module: ModuleID, artifact: Artifact) =>
   artifact.`type` match {
     case "jar" => "sirius.jar"
     case "src" => "sirius-sources.jar"
@@ -36,6 +36,13 @@ crossPaths := false
 javacOptions ++= Seq("-source", "1.6", "-target", "1.6")
 
 scalacOptions ++= Seq("-deprecation", "-unchecked")
+
+scalacOptions in (Compile,doc) ++= Seq("-doc-footer",
+  "Copyright 2013-2014 Comcast Cable Communications Management, LLC", "-doc-title", "Sirius")
+
+scalacOptions in (Compile, doc) ++= Seq("-doc-root-content", "src/main/resources/overview.txt")
+
+parallelExecution := false
 
 // allows us to pull deps from pom file
 externalPom()

@@ -1,5 +1,5 @@
 /*
- *  Copyright 2012-2013 Comcast Cable Communications Management, LLC
+ *  Copyright 2012-2014 Comcast Cable Communications Management, LLC
  *
  *  Licensed under the Apache License, Version 2.0 (the "License");
  *  you may not use this file except in compliance with the License.
@@ -15,19 +15,26 @@
  */
 package com.comcast.xfinity.sirius.api.impl.membership
 
+import com.comcast.xfinity.sirius.api.SiriusConfiguration
+
 object BackwardsCompatibleClusterConfig {
-  def apply(backend: ClusterConfig): BackwardsCompatibleClusterConfig = {
-    new BackwardsCompatibleClusterConfig(backend)
+  def apply(backend: ClusterConfig)(implicit config: SiriusConfiguration): BackwardsCompatibleClusterConfig = {
+    new BackwardsCompatibleClusterConfig(backend)(config)
   }
 }
 
 /**
  * Backwards-compatible ClusterConfig implementation. Will convert any "akka://" actor paths
- * into akka 2.2-compatible "akka.tcp://" paths. Wraps another concrete ClusterConfig implemntation.
+ * into akka 2.2-compatible "akka.tcp://" paths. Wraps another concrete ClusterConfig implementation.
  *
  * @param backend ClusterConfig supplying members
  */
-private[membership] class BackwardsCompatibleClusterConfig(backend: ClusterConfig) extends ClusterConfig {
+private[membership] class BackwardsCompatibleClusterConfig(backend: ClusterConfig)(config: SiriusConfiguration) extends ClusterConfig {
+  val prefix = config.getProp(SiriusConfiguration.ENABLE_SSL, false) match {
+    case true => "akka.ssl.tcp://"
+    case false => "akka.tcp://"
+  }
+
   /**
    * List of akka paths for the members of the cluster.
    *
@@ -36,7 +43,7 @@ private[membership] class BackwardsCompatibleClusterConfig(backend: ClusterConfi
   def members = {
     backend.members.map {
       case path if path.startsWith("akka://") =>
-        path.replaceFirst("akka://", "akka.tcp://")
+        path.replaceFirst("akka://", prefix)
       case path => path
     }
   }
